@@ -1,0 +1,673 @@
+<?php
+session_start();
+
+// 設定會話過期時間為3600秒（1小時）
+$timeout_duration = 3600;
+
+// 防止頁面快取
+header("Cache-Control: no-cache, no-store, must-revalidate");
+header("Pragma: no-cache");
+header("Expires: 0");
+
+// 檢查會話是否過期
+if (isset($_SESSION['LAST_ACTIVITY']) && (time() - $_SESSION['LAST_ACTIVITY']) > $timeout_duration) {
+    session_unset();
+    session_destroy();
+    header('Location: /Login/Login.php');
+    exit;
+}
+
+// 更新活動時間
+$_SESSION['LAST_ACTIVITY'] = time();
+
+// 檢查是否登入
+if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
+    header('Location: /Login/Login.php');
+    exit;
+}
+
+
+// 根據用戶角色設定背景顏色
+$user_role = $_SESSION['role'];
+$username = $_SESSION['username'];
+$pageType = $_SESSION['pageType'];
+
+
+// 切換角色邏輯
+if ($user_role === 'admin' && isset($_POST['roleSwitch'])) {
+    $pageType = $_POST['roleSwitch'] === 'admin' ? 'admin' : 'user';
+    $_SESSION['pageType'] = $pageType;
+}
+
+
+$displayRole = $pageType === 'user' ? 'user' : $user_role;
+// 根據頁面類型及角色顯示不同內容
+if ($pageType === 'admin' && $user_role === 'admin') {
+    // 顯示管理頁面選項
+} elseif ($pageType === 'user') {
+    // 顯示使用者頁面選項
+} else {
+    // 其他處理邏輯
+}
+
+?>
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Web Platform</title>
+    <style>
+        .sidebar a {
+            text-decoration: none;
+            color: #333;
+            font-weight: bold;
+        }
+
+        /* 單個框架的開關按鈕樣式 */
+        .switch-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 85px;
+            height: 30px;
+            border-radius: 30px;
+            transition: background-color 0.4s;
+        }
+
+        .switch-wrapper.admin {
+            background-color: #2196F3;
+            /* admin 藍色 */
+        }
+
+        .switch-wrapper.user {
+            background-color: #4CAF50;
+            /* user 綠色 */
+        }
+
+
+        .switch-wrapper .role-text {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .switch-wrapper.user .role-text {
+            left: auto;
+            right: 10px;
+        }
+
+        .switch {
+            position: absolute;
+            width: 60px;
+            height: 30px;
+            cursor: pointer;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: transparent;
+            border-radius: 30px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            border-radius: 50%;
+            transition: 0.4s;
+        }
+
+        /* 當選中為 admin 時，滑塊移到最右邊 */
+        input:checked+.slider:before {
+            transform: translateX(55px);
+        }
+
+        /* 調整版面，使內容居中 */
+        .role-switch {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            background-color: #3C3C3C;
+            padding: 12px;
+            gap: 15px;
+            /* 加大按鈕和切換開關之間的間距 */
+        }
+
+        button.logout {
+            padding: 5px 15px;
+            background-color: #d9534f;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            /* 增加圓角，使按鈕更加圓潤 */
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            /* 添加輕微陰影 */
+        }
+
+        button.logout:hover {
+            background-color: #c9302c;
+            /* 懸停時的按鈕背景 */
+        }
+
+        /* 通用頁面樣式 */
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 10%;
+            background-color: #f2f2f2;
+            padding: 5px;
+            box-sizing: border-box;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .sidebar ul {
+            #list-style-type: none;
+            #padding: 10px;
+            list-style: none;
+            padding: 10;
+
+        }
+
+        .sidebar ul li {
+            margin-bottom: 10px;
+        }
+
+        .sidebar ul li a {
+            text-decoration: none;
+            color: #003060;
+            font-size: 18px;
+        }
+
+        iframe {
+            width: 100%;
+            height: calc(100vh - 80px);
+            border: none;
+        }
+
+        /* 下拉選單樣式 */
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #444444;
+            min-width: 130px;
+            z-index: 1;
+            left: 0;
+            margin-left: 40px;
+            border-radius: 6px;
+            padding: 5px;
+            white-space: nowrap;
+            overflow: visible;
+        }
+
+        .dropdown-content a {
+            color: black;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+        }
+
+        .dropdown-content a:hover {
+            background-color: #000000;
+            border-radius: 6px;
+        }
+
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        /* 密碼彈出框樣式 */
+        #passwordModal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        #passwordModalContent {
+            background-color: #fff;
+            margin: 15% auto;
+            padding: 20px;
+            width: 300px;
+            border-radius: 10px;
+        }
+
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            padding-top: 100px;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 300px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        input[type="password"] {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+            width: 100%;
+            /* 確保輸入框填滿寬度 */
+        }
+
+        /* 按鈕樣式 */
+        button.confirm {
+            padding: 10px 15px;
+            margin: 5px;
+            background-color: #007B8F;
+            /* 按鈕背景 */
+            color: white;
+            /* 按鈕文字 */
+            border: none;
+            /* 無邊框 */
+            cursor: pointer;
+            /* 滑鼠變成手形 */
+            border-radius: 5px;
+            /* 圓角邊框 */
+            font-size: 16px;
+            /* 字體大小 */
+            font-weight: bold;
+            /* 字體加粗 */
+            transition: background-color 0.3s ease;
+            /* 添加背景變化效果 */
+        }
+
+        button.confirm:hover {
+            background-color: #005f6b;
+            /* 懸停時的按鈕背景 */
+        }
+
+        button.cancel {
+            padding: 10px 15px;
+            margin: 5px;
+            background-color: #ccc;
+            /* 取消按鈕背景 */
+            color: #333;
+            /* 取消按鈕文字顏色 */
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        button.cancel:hover {
+            background-color: #bbb;
+            /* 懸停時的取消按鈕背景 */
+        }
+
+        .role-switch .username {
+            margin-right: 15px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .switch-wrapper input:disabled+.slider {
+            background-color: #ccc;
+            /* 禁用狀態的背景顏色 */
+            cursor: not-allowed;
+            /* 禁用狀態的鼠標 */
+            opacity: 0.5;
+            /* 調整透明度 */
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="role-switch">
+        <div class="username"><?php echo htmlspecialchars($username); ?></div>
+        <div class="switch-wrapper <?php echo ($_SESSION['pageType'] === 'user' || $_SESSION['role'] === 'user') ? 'user' : 'admin'; ?>">
+            <span class="role-text">
+                <?php
+                // 如果是使用者頁面，顯示為 'user'，否則根據角色顯示
+                echo ($_SESSION['pageType'] === 'user') ? 'user' : ($_SESSION['role'] === 'admin' ? 'admin' : 'user');
+                ?>
+            </span>
+            <label class="switch">
+                <!-- 如果是使用者頁面，取消選中；否則依據角色決定 -->
+                <input type="checkbox" id="roleSwitch" <?php echo ($user_role === 'user') ? 'disabled' : ''; ?> <?php if ($_SESSION['pageType'] !== 'user' && $_SESSION['role'] === 'admin') echo 'checked'; ?>>
+                <span class="slider"></span>
+            </label>
+        </div>
+        <button class="logout" onclick="logout()">登出</button>
+    </div>
+
+
+    <!-- 密碼輸入的彈出框 -->
+    <div class="container">
+        <div class="sidebar">
+            <ul>
+                <li><a href="/" data-url="home.html"><img src="jpg/home.png" width="50px" height="50px"></a></li>
+                <li><b>
+                        <font size="5">NTP Site</font>
+                    </b></li>
+
+                <!-- admin 可以看到所有選項 -->
+                <?php if ($pageType === 'admin') : ?>
+                    <li class="dropdown">
+                        <a href="/" data-url="home.html" class="dropdown-btn">
+                            <font size="4" color="#003060"> ➤ 系統管理</font>
+                        </a>
+                        <div class="dropdown-content">
+                            <a href="Login/UserMgmt.php" data-url="Login/UserMgmt.php">
+                                <font size="3" color="#F0F8FF"> ◉ 帳號控管</font>
+                            </a>
+                        </div>
+                    </li>
+                    <li class="dropdown">
+                        <a href="/" data-url="home.html" class="dropdown-btn">
+                            <font size="4" color="#003060"> ➤ IP掃描</font>
+                        </a>
+                        <div class="dropdown-content">
+                            <a href="IpScanning/ManageSubnets.php" data-url="IpScanning/ManageSubnets.php">
+                                <font size="3" color="#F0F8FF"> ◉ 網段設定</font>
+                            </a>
+                        </div>
+                    </li>
+                    <li class="dropdown">
+                        <a href="/" data-url="home.html" class="dropdown-btn">
+                            <font size="4" color="#003060"> ➤ 設備管理</font>
+                        </a>
+                        <div class="dropdown-content">
+                            <a href="Device/DeviceMgmt.php" data-url="Device/DeviceMgmt.php">
+                                <font size="3" color="#F0F8FF"> ◉ 設備控管</font>
+                            </a>
+                        </div>
+                    </li>
+                    <li class="dropdown">
+                        <a href="/" data-url="home.html" class="dropdown-btn">
+                            <font size="4" color="#003060"> ➤ 軟體控管</font>
+                        </a>
+                        <div class="dropdown-content">
+                            <a href="ESXI/vCenterMgmt.php" data-url="ESXI/vCenterMgmt.php">
+                                <font size="3" color="#F0F8FF"> ◉ VMware</font>
+                            </a>
+                        </div>
+                    </li>
+
+                <?php endif; ?>
+
+                <!-- user 可以看到所有選項 -->
+                <?php if ($pageType === 'user') : ?>
+                    <li class="dropdown">
+                        <a href="/" data-url="home.html" class="dropdown-btn">
+                            <font size="4" color="#003060"> ➤ IP控管</font>
+                        </a>
+                        <div class="dropdown-content">
+                            <a href="IpScanning/IpCheck.php" data-url="IpScanning/IpCheck.php">
+                                <font size="3" color="#F0F8FF"> ◉ IP管理表</font>
+                            </a>
+                        </div>
+                    </li>
+                    <li class="dropdown">
+                        <a href="/" data-url="home.html" class="dropdown-btn">
+                            <font size="4" color="#003060"> ➤ 設備控管</font>
+                        </a>
+                        <div class="dropdown-content">
+                            <a href="Device/DeviceUsers.php" data-url="Device/DeviceUsers.php">
+                                <font size="3" color="#F0F8FF"> ◉ 設備管理</font>
+                            </a>
+                        </div>
+                    </li>
+                    <li class="dropdown">
+                        <a href="/" data-url="home.html" class="dropdown-btn">
+                            <font size="4" color="#003060"> ➤ 軟體控管</font>
+                        </a>
+                        <div class="dropdown-content">
+                            <a href="ESXI/vCenterUsers.php" data-url="ESXI/vCenterUsers.php">
+                                <font size="3" color="#F0F8FF"> ◉ VMware</font>
+                            </a>
+                        </div>
+                    </li>
+                    <li class="dropdown">
+                        <a href="/" data-url="home.html" class="dropdown-btn">
+                            <font size="4" color="#003060"> ➤ 管理網頁</font>
+                        </a>
+                        <div class="dropdown-content">
+                            <a href="https://10.31.34.10" data-url="http://10.31.33.18/home.html" onclick="window.open(this.href); return false;">
+                                <font size="3" color="#F0F8FF"> ◉ vCenter (NTP)</font>
+                            </a>
+                            <a href="https://10.31.34.5" data-url="http://10.31.33.18/home.html" onclick="window.open(this.href); return false;">
+                                <font size="3" color="#F0F8FF"> ◉ vROM (NTP)</font>
+                            </a>
+                            <a href="https://10.31.39.10" data-url="http://10.31.33.18/home.html" onclick="window.open(this.href); return false;">
+                                <font size="3" color="#F0F8FF"> ◉ Loginsight (NTP)</font>
+                            </a>
+                            <a href="https://10.252.255.206" data-url="http://10.31.33.18/home.html" onclick="window.open(this.href); return false;">
+                                <font size="3" color="#F0F8FF"> ◉ NetApp (NTP)</font>
+                            </a>
+                        </div>
+                    </li>
+                <?php endif; ?>
+            </ul>
+        </div>
+        <div class="main-content">
+            <iframe id="content-frame" src="home.html"></iframe>
+        </div>
+    </div>
+
+    <script>
+        // 登出
+        function logout() {
+            fetch('/Login/Logout.php', {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.href = '/Login/Login.php';
+                    } else {
+                        alert('登出失敗：伺服器未成功回應。');
+                    }
+                })
+                .catch(error => {
+                    console.error('登出錯誤:', error);
+                    alert('無法登出，請檢查網路或伺服器連接。');
+                });
+        }
+
+        // 顯示密碼彈出框
+        function showPasswordModal() {
+            document.getElementById('passwordModal').style.display = 'block';
+        }
+
+        // 關閉彈出框
+        function closePasswordModal() {
+            document.getElementById('passwordModal').style.display = 'none';
+        }
+
+        // 驗證 Admin 密碼
+        function validateAdminPassword() {
+            var password = document.getElementById('adminPassword').value;
+            fetch('/Login/validateAdminPassword.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'password=' + encodeURIComponent(password)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        switchRole('admin'); // 密碼正確，切換角色
+                        closePasswordModal();
+                    } else {
+                        alert('密碼錯誤，請重試！');
+                    }
+                })
+                .catch(error => {
+                    console.error('錯誤:', error);
+                    alert('無法驗證密碼，請檢查網路或伺服器連接。');
+                });
+        }
+
+        // 切換開關監聽器
+        document.getElementById('roleSwitch').addEventListener('change', function() {
+            if (this.disabled) {
+                alert('您無權限切換到管理者角色！');
+                return; // 禁用狀態下，停止後續操作
+            }
+
+            var role = this.checked ? 'admin' : 'user';
+
+            <?php if ($user_role === 'admin') : ?>
+                switchRole(role); // admin 用戶可以切換
+            <?php else : ?>
+                if (role === 'admin') {
+                    showPasswordModal(); // 非 admin 用戶需要密碼
+                } else {
+                    switchRole('user');
+                }
+            <?php endif; ?>
+        });
+
+
+        // 更新框架背景顏色
+        function updateSwitchBackground(role) {
+            var switchWrapper = document.querySelector('.switch-wrapper');
+            var roleText = document.querySelector('.role-text');
+            roleText.textContent = role;
+            if (role === 'admin') {
+                switchWrapper.classList.remove('user');
+                switchWrapper.style.backgroundColor = '#4CAF50'; // 綠色背景
+            } else {
+                switchWrapper.classList.add('user');
+                switchWrapper.style.backgroundColor = '#2196F3'; // 藍色背景
+            }
+        }
+
+        // 切換角色的功能
+        function switchRole(role) {
+            fetch('/Login/switchRole.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'role=' + encodeURIComponent(role)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert(data.message); // 顯示伺服器返回的錯誤訊息
+                    }
+                })
+                .catch(error => {
+                    console.error('錯誤:', error);
+                    alert('無法切換角色，請檢查網路或伺服器連接。');
+                });
+        }
+
+        var sidebarLinks = document.querySelectorAll(".sidebar a");
+        var contentFrame = document.querySelector("#content-frame");
+
+        for (var i = 0; i < sidebarLinks.length; i++) {
+            sidebarLinks[i].addEventListener("click", function(event) {
+                event.preventDefault();
+                var url = this.getAttribute('data-url');
+                contentFrame.src = url;
+            });
+        }
+    </script>
+
+</body>
+
+</html>
