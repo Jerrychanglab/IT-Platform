@@ -1,8 +1,14 @@
 <?php
 // 解密密碼
-$encryptedFile = 'encrypted_pw.txt';
-$decryptionKey = 'verifypasswd';
-$pw = trim(shell_exec("openssl enc -aes-256-cbc -d -salt -pbkdf2 -in $encryptedFile -pass pass:$decryptionKey"));
+$secret_key = "jarry_chang";
+
+// 加密和解密函數
+function decryptPassword($encryptedPassword, $secretKey) {
+    $data = base64_decode($encryptedPassword);
+    $iv = substr($data, 0, 16);
+    $encryptedText = substr($data, 16);
+    return openssl_decrypt($encryptedText, 'aes-256-cbc', $secretKey, 0, $iv);
+}
 
 // 發送告警的函數（外部定義，避免多次宣告）
 function sendAlert($model, $machineSerial, $device_ip, $management_ip, $alert_text, $event_id) {
@@ -29,11 +35,7 @@ function sendAlert($model, $machineSerial, $device_ip, $management_ip, $alert_te
 }
 
 // 定義掃描函數
-function performScan($server, $pw) {
-    if (empty($server['device_ip'])) {
-        exit(0);
-    }
-
+function performScan($server, $secret_key) {
     $esxi_ip = $server['device_ip'];
     exec("timeout 5 fping -t 500 $esxi_ip 2>&1", $ping_output, $ping_status);
     $ping_result = implode("\n", $ping_output);
@@ -51,7 +53,12 @@ function performScan($server, $pw) {
         exit(0);
     }
 
-    if (ssh2_auth_password($connection, 'root', $pw)) {
+    // 解密 password
+    $decrypted_password = decryptPassword($server['password'], $secret_key);
+    
+    // 使用從 DeviceInfo.php 中抽取的 user 和解密後的 password 進行認證
+    if (ssh2_auth_password($connection, $server['user'], $decrypted_password)) {
+        echo "認證成功到 $esxi_ip\n";  // 成功認證後顯示成功
         $stream_ip = ssh2_exec($connection, "ipmitool lan print | grep -w 'IP Address' | grep -v 'Source' | awk '{print \$4}'");
         stream_set_blocking($stream_ip, true);
         $management_ip = trim(stream_get_contents($stream_ip));
@@ -75,12 +82,17 @@ function performScan($server, $pw) {
 // 無限迴圈
 while (true) {
     $servers = include('/var/www/html/Device/DeviceInfo.php');
+
+    // 使用 array_filter 過濾掉設備資料不完整的設備
+    $servers = array_filter($servers, function($server) {
+        return isset($server['device_ip'], $server['os'], $server['management_ip'], $server['password'], $server['user']) &&
+               !empty($server['device_ip']) && !empty($server['os']) && !empty($server['management_ip']) && !empty($server['password']) && !empty($server['user']);
+    });
+
     $max_processes = 10;
     $current_processes = 0;
 
     foreach ($servers as $server) {
-        if (!isset($server['device_ip'])) continue;
-
         $pid = pcntl_fork();
         if ($pid == -1) {
             die("無法創建子進程");
@@ -95,7 +107,7 @@ while (true) {
                 }
             }
         } else {
-            performScan($server, $pw);
+            performScan($server, $secret_key);  // 傳遞 $secret_key
             exit(0);
         }
     }
