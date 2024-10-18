@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-// 防止頁面緩存
+// 防止页面被缓存
 header("Cache-Control: no-cache, no-store, must-revalidate"); // HTTP 1.1
 header("Pragma: no-cache"); // HTTP 1.0
 header("Expires: 0"); // Proxies
@@ -27,32 +27,49 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     exit;
 }
 
-
 // 引入 DeviceInfo.php，取得設備資料
 $servers = include('DeviceInfo.php');
 
-//引入 MaintainInfo.php
+// 引入 MaintainInfo.php
 $maintainInfo = json_decode(file_get_contents('MaintainInfo.php'), true);
 
 // 提取所有唯一的類型
 $categories = array_unique(array_column($servers, 'category'));
 
-// 處理 POST 請求，更新設備信息或還原設備
+// 定義加密和解密密鑰
+$secret_key = "jarry_chang";
 
+// 加密和解密函數
+function encryptPassword($password, $secretKey)
+{
+    $iv = openssl_random_pseudo_bytes(16);
+    $encryptedText = openssl_encrypt($password, 'aes-256-cbc', $secretKey, 0, $iv);
+    return base64_encode($iv . $encryptedText);
+}
+
+function decryptPassword($encryptedPassword, $secretKey)
+{
+    $data = base64_decode($encryptedPassword);
+    $iv = substr($data, 0, 16);
+    $encryptedText = substr($data, 16);
+    return openssl_decrypt($encryptedText, 'aes-256-cbc', $secretKey, 0, $iv);
+}
+
+// 處理 POST 請求
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action'])) {
         if ($_POST['action'] === 'restore') {
-            // 您現有的還原設備的代碼
+            // 還原設備資料的邏輯
             $serial = $_POST['serial'];
             foreach ($servers as &$server) {
                 if ($server['machineSerial'] === $serial) {
                     $server['os'] = '';
                     $server['device_ip'] = '';
                     $server['management_ip'] = '';
+                    $server['user'] = '';
                     $server['password'] = '';
-                    // 檢查狀態，如果不是綠色，重置為空
                     if ($server['status'] === 'normal' || $server['status'] === 'unreachable') {
-                        $server['status'] = '';      // 重置非綠色燈號
+                        $server['status'] = '';
                     }
                     break;
                 }
@@ -61,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['status' => 'success', 'servers' => $servers]);
             exit;
         } elseif ($_POST['action'] === 'updateStatus') {
-            // 新增的狀態更新邏輯
+            // 更新狀態的邏輯
             $serial = $_POST['machineSerial'];
             $newStatus = $_POST['status'];
             foreach ($servers as &$server) {
@@ -70,51 +87,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     break;
                 }
             }
-            // 將狀態更新寫回到 DeviceInfo.php
             file_put_contents('DeviceInfo.php', "<?php\n return " . var_export($servers, true) . ";\n");
             echo json_encode(['status' => 'success', 'message' => 'Status updated']);
             exit;
         } elseif ($_POST['action'] === 'updateMaintainStatus') {
-            // 更新 MaintainInfo 的狀態邏輯
+            // 更新 MaintainInfo 狀態邏輯
             $serial = $_POST['machineSerial'];
-            $eventId = $_POST['event_id']; // 新增 event_id 條件
+            $eventId = $_POST['event_id'];
             $newStatus = $_POST['status'];
-            $updatedBy = $_POST['updated_by'] ?? ''; // 新增的「更新者」欄位
+            $updatedBy = $_POST['updated_by'] ?? '';
 
-            // 確認要移除設備記錄的標記
             $found = false;
 
-            // 當狀態為 "完成" 時移除該設備
             if ($newStatus === '完成') {
-                // 從 MaintainInfo 中移除該設備
                 $maintainInfo = array_filter($maintainInfo, function ($info) use ($serial, $eventId) {
                     return !($info['machineSerial'] === $serial && $info['event_id'] === $eventId);
                 });
 
-                // 更新狀態至 DeviceInfo.php 中
                 foreach ($servers as &$server) {
                     if ($server['machineSerial'] === $serial) {
-                        $server['status'] = 'normal'; // 設為綠燈
+                        $server['status'] = 'normal';
                         $found = true;
                         break;
                     }
                 }
-
-                // 寫入更新至 DeviceInfo.php
                 file_put_contents('DeviceInfo.php', "<?php\n return " . var_export($servers, true) . ";\n");
             } else {
-                // 當狀態非 "完成" 時，更新 MaintainInfo 中的狀態
                 foreach ($maintainInfo as &$info) {
                     if ($info['machineSerial'] === $serial && $info['event_id'] === $eventId) {
                         $info['status'] = $newStatus;
-                        $info['updated_by'] = $updatedBy; // 更新者
+                        $info['updated_by'] = $updatedBy;
                         $found = true;
                         break;
                     }
                 }
             }
 
-            // 更新 MaintainInfo.php
             file_put_contents('MaintainInfo.php', json_encode(array_values($maintainInfo), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
             if ($found) {
@@ -127,15 +135,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // 處理設備更新的邏輯
-    // 保留您現有的其他代碼
     $os = $_POST['os'];
     $serial = $_POST['serial'];
     $device_ip = $_POST['device_ip'];
     $management_ip = $_POST['management_ip'];
+    $user = $_POST['user'];
     $password = $_POST['password'];
 
-    // 使用 PHP 的 password_hash 加密密碼
-    $encrypted_password = password_hash($password, PASSWORD_DEFAULT);
+    // 使用加密函數加密密碼
+    $encrypted_password = encryptPassword($password, $secret_key);
 
     // 更新對應設備的數據
     foreach ($servers as &$server) {
@@ -143,17 +151,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $server['os'] = $os;
             $server['device_ip'] = $device_ip;
             $server['management_ip'] = $management_ip;
+            $server['user'] = $user;
             $server['password'] = $encrypted_password;
             break;
         }
     }
+
     // 將更新後的設備信息寫回 DeviceInfo.php
     file_put_contents('DeviceInfo.php', "<?php\n return " . var_export($servers, true) . ";\n");
 
     echo json_encode(['status' => 'success', 'servers' => $servers]);
     exit;
 }
-
 ?>
 
 <!DOCTYPE html>
@@ -771,7 +780,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     try {
                         // 直接解析 JSON 格式
                         servers = JSON.parse(xhr.responseText);
-                        console.log('自動更新的資料:', servers); // 檢查資料更新是否觸發
+                        //console.log('自動更新的資料:', servers); // 檢查資料更新是否觸發
+                        console.log('自動更新的資料:', JSON.stringify(servers, null, 2)); // 格式化輸出物件資料
                         // 更新頁面顯示
                         filterByType('Server');
                     } catch (e) {
@@ -856,7 +866,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             document.getElementById('manageModal').style.display = 'none';
         }
 
-        function saveData(password) {
+        function saveData(user, password) {
             const os = document.getElementById('editOS').value;
             const model = document.getElementById('editModel').value;
             const machineSerial = document.getElementById('editSerial').value;
@@ -880,7 +890,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             };
 
-            const data = `os=${encodeURIComponent(os)}&model=${encodeURIComponent(model)}&serial=${encodeURIComponent(machineSerial)}&device_ip=${encodeURIComponent(deviceIp)}&management_ip=${encodeURIComponent(managementIp)}&password=${encodeURIComponent(password)}`;
+            const data = `os=${encodeURIComponent(os)}&model=${encodeURIComponent(model)}&serial=${encodeURIComponent(machineSerial)}&device_ip=${encodeURIComponent(deviceIp)}&management_ip=${encodeURIComponent(managementIp)}&user=${encodeURIComponent(user)}&password=${encodeURIComponent(password)}`;
             xhr.send(data);
         }
     </script>
