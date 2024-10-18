@@ -34,3 +34,22 @@
 ### 🔧 簡化維護流程
 - 自動保存維護記錄與設備狀態更新，減少手動操作，提升維護效率。
 - **維護歷史可視化**：清晰顯示每台設備的維護記錄和處理狀況。
+
+
+## 呈現
+![image](https://github.com/user-attachments/assets/501277d3-8974-43a5-939d-1d31454b2af9)
+![image](https://github.com/user-attachments/assets/9cc58954-fa3b-46bb-a6be-413e7ab5f4f7)
+![image](https://github.com/user-attachments/assets/4b90634c-46d5-4886-bf6a-724a097a1bbd)
+![image](https://github.com/user-attachments/assets/a03d94b3-4eea-42ce-ab26-da52d54d48ee)
+![image](https://github.com/user-attachments/assets/bd2db244-c354-4c5f-9ccb-479f8c1c6e84)
+![image](https://github.com/user-attachments/assets/798501a8-fdbd-4fd4-a0be-65ef461522ed)
+![image](https://github.com/user-attachments/assets/093d57a0-f6cc-4079-921c-bf7338b332c2)
+![image](https://github.com/user-attachments/assets/40675be9-3847-4f8a-829b-7744002774ae)
+![image](https://github.com/user-attachments/assets/2531089e-1617-4c82-8ba0-a69394e1695e)
+![image](https://github.com/user-attachments/assets/fc67bb9d-49ef-4d68-8d5e-00ca12548b3c)
+
+
+
+
+
+
