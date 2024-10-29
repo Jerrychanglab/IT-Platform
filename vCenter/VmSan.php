@@ -85,3 +85,4 @@ while (true) {
 
 // 執行完畢後，刪除全域文件
 unlink($mainLockFile);
+?>
