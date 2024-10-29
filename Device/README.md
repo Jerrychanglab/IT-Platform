@@ -38,7 +38,7 @@
 
 ## 呈現
 ![image](https://github.com/user-attachments/assets/366ac32a-9b9f-4fa2-be6e-97548998dc3d)
-![image](https://github.com/user-attachments/assets/e2be023a-7c11-4b76-8920-dcd03f902ad8)
+![image](https://github.com/user-attachments/assets/b156a041-05a0-44bd-8a96-56f317ad23f8)
 ![image](https://github.com/user-attachments/assets/356d481f-7b86-4136-869e-913e0991dcc8)
 ![image](https://github.com/user-attachments/assets/978ed607-517f-4805-81f9-32da6ff5bc3b)
 ![image](https://github.com/user-attachments/assets/76fc31ea-783f-4b61-b2d4-0d8c4ba48060)
