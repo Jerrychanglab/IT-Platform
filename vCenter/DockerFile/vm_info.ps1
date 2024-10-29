@@ -1,19 +1,3 @@
-FROM mcr.microsoft.com/powershell:7.1.4-ubuntu-20.04
-
-RUN apt-get update && \
-    apt-get install -y apache2 curl supervisor vim tzdata &&\
-    rm -rf /var/lib/apt/lists/*
-
-RUN pwsh -c "Install-Module -Name VMware.PowerCLI -AllowClobber -Force"
-
-ENV TZ="Asia/Taipei"
-
-WORKDIR /workspace
-
-COPY vm_info.ps1 /workspace
-
-ENTRYPOINT ["pwsh"]
-[root@master-1 vcenter_list]# cat vm_info.ps1
 Get-Module VMware.* -ListAvailable > $null
 Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false > $null
 Connect-VIServer -Server $env:vCenterIP -User $env:UserName -Password $env:Password > $null
