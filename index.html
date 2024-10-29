@@ -167,6 +167,7 @@ if ($pageType === 'admin' && $user_role === 'admin') {
             transition: background-color 0.3s ease;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             /* 添加輕微陰影 */
+            z-index: 2;
         }
 
         button.logout:hover {
@@ -406,12 +407,27 @@ if ($pageType === 'admin' && $user_role === 'admin') {
             opacity: 0.5;
             /* 調整透明度 */
         }
+
+        .header {
+            text-align: left;
+            padding-left: 20px;
+            color: white;
+            padding: 15px;
+            font-weight: bold;
+            position: absolute;
+            width: 100%;
+            left: 0;
+            z-index: 0;
+        }
     </style>
 </head>
 
 <body>
 
     <div class="role-switch">
+        <div class="header">
+            <h1>IT Platform</h1>
+        </div>
         <div class="username"><?php echo htmlspecialchars($username); ?></div>
         <div class="switch-wrapper <?php echo ($_SESSION['pageType'] === 'user' || $_SESSION['role'] === 'user') ? 'user' : 'admin'; ?>">
             <span class="role-text">
