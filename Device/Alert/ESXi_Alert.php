@@ -86,7 +86,8 @@ while (true) {
     // 使用 array_filter 過濾掉設備資料不完整的設備
     $servers = array_filter($servers, function($server) {
         return isset($server['device_ip'], $server['os'], $server['management_ip'], $server['password'], $server['user']) &&
-               !empty($server['device_ip']) && !empty($server['os']) && !empty($server['management_ip']) && !empty($server['password']) && !empty($server['user']);
+		!empty($server['device_ip']) && !empty($server['os']) && !empty($server['management_ip']) && !empty($server['password']) && !empty($server['user']) &&
+		$server['os'] === 'ESXi'; // 只篩選 os 為 ESXi 的服務器
     });
 
     $max_processes = 10;
