@@ -1,7 +1,5 @@
-# 告警系統
-
 # 設備管理系統  
-管理設備系統透過自動化檢測和告警，顯著提升運維效率，減少操作錯誤。集中化數據管理提供了可視化支持，縮短了故障處理時間，確保設備穩定運行並促進快速決策。
+此告警系統是一個多平台異常檢測工具，整合 NetApp、VMware 和伺服器日誌，即時捕捉關鍵事件，自動推送至 Telegram 並記錄於 Platform 進行保存。集中控管異常，追蹤處理進度，減少人力負擔並提升監控效率。
 
 ## 效益  
 
@@ -33,7 +31,6 @@
 - **提升維護效率**：自動保存維護記錄並更新設備狀態，減少手動操作。
 - **維護歷史可視化**：清晰顯示設備維護記錄和處理狀況，簡化查閱流程。
 
-## 此告警系統是一個多平台異常檢測工具，整合 NetApp、VMware 和伺服器日誌，即時捕捉關鍵事件，自動推送至 Telegram 並記錄於 Platform 進行保存。集中控管異常，追蹤處理進度，減少人力負擔並提升監控效率。
 ![image](https://github.com/user-attachments/assets/6e09c42b-e07f-4d53-b78e-63a1bdcadf5d)
 ![image](https://github.com/user-attachments/assets/2d221f0e-47c0-4aab-8b9d-885c6acec56c)
 ![image](https://github.com/user-attachments/assets/363ba4e6-30e3-4d0d-ada3-a7859f9e5611)
