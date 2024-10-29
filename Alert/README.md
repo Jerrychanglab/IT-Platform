@@ -5,3 +5,7 @@
 ![image](https://github.com/user-attachments/assets/2d221f0e-47c0-4aab-8b9d-885c6acec56c)
 ![image](https://github.com/user-attachments/assets/363ba4e6-30e3-4d0d-ada3-a7859f9e5611)
 ![image](https://github.com/user-attachments/assets/cf054413-32ea-437e-b34e-a3b628f236a2)
+
+## 安裝方式
+### API + Alert + Modules + Whitelist 複製下來
+### 抓取rsyslog.conf 並且取代
