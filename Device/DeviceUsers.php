@@ -131,6 +131,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 echo json_encode(['status' => 'error', 'message' => '找不到對應的設備資料']);
             }
             exit;
+        } elseif ($_POST['action'] === 'saveTag') {
+            // 新增或修改標籤邏輯
+            $serial = $_POST['serial'];
+            $key = $_POST['key'];
+            $value = $_POST['value'];
+
+            // 讀取目前的設備資訊
+            $servers = include('DeviceInfo.php');
+
+            // 找到對應的設備，新增或修改標籤
+            foreach ($servers as &$server) {
+                if ($server['machineSerial'] === $serial) {
+                    if (!isset($server['tags'])) {
+                        $server['tags'] = [];
+                    }
+                    $server['tags'][$key] = $value; // 新增或修改標籤
+                    break;
+                }
+            }
+
+            // 將更新後的設備信息寫回 DeviceInfo.php
+            file_put_contents('DeviceInfo.php', "<?php\n return " . var_export($servers, true) . ";\n");
+
+            echo json_encode(['status' => 'success']);
+            exit;
+        } elseif ($_POST['action'] === 'removeTag') {
+            // 移除標籤邏輯
+            $serial = $_POST['serial'];
+            $key = $_POST['key'];
+
+            // 讀取目前的設備資訊
+            $servers = include('DeviceInfo.php');
+
+            // 找到對應的設備，移除指定標籤
+            foreach ($servers as &$server) {
+                if ($server['machineSerial'] === $serial) {
+                    if (isset($server['tags'][$key])) {
+                        unset($server['tags'][$key]); // 刪除標籤
+                    }
+                    break;
+                }
+            }
+
+            // 將更新後的設備信息寫回 DeviceInfo.php
+            file_put_contents('DeviceInfo.php', "<?php\n return " . var_export($servers, true) . ";\n");
+
+            echo json_encode(['status' => 'success']);
+            exit;
         }
     }
 
@@ -476,6 +524,106 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background-color: #FF0000;
             /* Darker orange on hover */
         }
+
+        /* 儲存標籤與取消按鈕排列在同一行 */
+        /* 儲存標籤與取消按鈕排列在同一行 */
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            /* 控制按鈕之間的間距 */
+            margin-top: 20px;
+        }
+
+        /* Key 和 Value 放在同一行 */
+        #tagForm {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #tagForm .input-row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            align-items: center;
+            width: 100%;
+        }
+
+        /* Key 和 Value 的輸入框調整 */
+        #tagForm input[type="text"] {
+            width: 150px;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        #tagForm label {
+            font-weight: bold;
+        }
+
+        /* 調整現有標籤的顯示 */
+
+        #existingTags {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* 將內容居中 */
+            justify-content: center;
+        }
+
+        #existingTags div {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px;
+            background-color: #F9F9F9;
+            border-radius: 4px;
+            text-align: left;
+            font-weight: bold;
+            gap: 10px;
+            /* 增加間距 */
+        }
+
+
+        /* 修改與刪除按鈕的間距 */
+        #existingTags button {
+            margin-left: 10px;
+            background-color: #3A632E;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            padding: 5px 10px;
+        }
+
+        #existingTags button:hover {
+            background-color: #2a4b1f;
+        }
+
+        #globalSearch {
+            width: 90%;
+            padding: 10px;
+            margin: 20px auto;
+            display: block;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+
+        /* 標籤欄位文字的樣式 */
+        .tag-column {
+            font-size: 12px;
+            /* 設定字體大小，依需求調整 */
+            color: #007B8F;
+            /* 可選擇調整字體顏色 */
+            text-align: left;
+            /* 如果希望字體左對齊 */
+            white-space: nowrap;
+            /* 避免自動換行，若需要 */
+            font-weight: bold;
+        }
     </style>
 </head>
 
@@ -485,11 +633,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <!-- 動態生成類型按鈕 -->
         <div class="button-container" id="categoryButtons">
+            <button class="all-devices-btn" onclick="filterByType('ALL')">ALL</button>
             <?php foreach ($categories as $category) : ?>
                 <button class="all-devices-btn" onclick="filterByType('<?php echo $category; ?>')"><?php echo $category; ?></button>
             <?php endforeach; ?>
         </div>
 
+        <!-- 新增搜尋框 -->
+        <div>
+            <input type="text" id="globalSearch" placeholder="全域搜尋..." onkeyup="globalFilterTags()">
+        </div>
+        <br>
         <!-- 設備列表 -->
         <table id="userTable">
             <tr>
@@ -500,6 +654,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <th>OS</th>
                 <th>設備IP</th>
                 <th>管理IP</th>
+                <th>標籤</th>
                 <th>操作</th>
             </tr>
         </table>
@@ -536,6 +691,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <select id="editOS" name="os" required>
                             <option value="ESXi">ESXi</option>
                             <option value="Linux">Linux</option>
+                            <option value="NetApp">NetApp</option>
                         </select>
                     </div>
                     <div class="item">
@@ -562,6 +718,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 
+    <!-- 標籤模態框 -->
+    <div id="tagModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeTagModal()">&times;</span>
+            <h2>管理標籤</h2>
+            <form id="tagForm">
+                <input type="hidden" id="tagSerial" name="serial">
+                <div class="input-row">
+                    <label for="tagKey">Key:</label>
+                    <input type="text" id="tagKey" name="key" required>
+                    <label for="tagValue">Value:</label>
+                    <input type="text" id="tagValue" name="value" required>
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" class="confirm" onclick="saveTag()">保存標籤</button>
+                    <button type="button" class="cancel" onclick="closeTagModal()">取消</button>
+                </div>
+            </form>
+
+            <!-- 顯示當前標籤 -->
+            <br>
+            <div id="existingTags">
+                <!-- 現有標籤將會在這裡動態生成 -->
+            </div>
+        </div>
+    </div>
+
     <!-- 顯示管理資訊模態框 -->
     <div id="manageModal" class="modal">
         <div class="manage-modal-content">
@@ -574,8 +757,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script>
         let servers = <?php echo json_encode($servers); ?>;
         let maintainInfo = <?php echo json_encode($maintainInfo); ?>;
+        let currentCategory = localStorage.getItem('currentCategory') || 'ALL';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            filterByType('ALL'); // 預設顯示所有設備資訊
+        });
 
         function filterByType(type) {
+            currentCategory = type; // 記錄當前選擇的類型
+            localStorage.setItem('currentCategory', type);
             const table = document.getElementById('userTable');
             table.innerHTML = `
                 <tr>
@@ -585,13 +775,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <th>設備序號</th>
                     <th>OS</th>
                     <th>設備IP</th>
-                    <th>管理IP</th>
-                    <th>操作</th>
+		    <th>管理IP</th>
+		    <th>標籤</th>
+		    <th>操作</th>
                 </tr>
-            `;
+`;
+
+
+            // 清空搜尋框，避免干擾類別篩選
+            document.getElementById('globalSearch').value = '';
             // 先根據燈號狀態進行排序
             servers
-                .filter(server => server.category === type)
+                .filter(server => type === 'ALL' || server.category === type)
                 .sort((a, b) => {
                     const priority = {
                         'hardware-error': 1, //黃燈
@@ -599,27 +794,145 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         '': 3, //無狀態
                         'normal': 4 // 綠燈
                     };
-                    return priority[a.status] - priority[b.status];
+                    return priority[a.status] - priority[b.status]; // 比較 a 和 b 的狀態優先級
                 })
                 .forEach(server => {
+                    const tags = server.tags ?
+                        Object.entries(server.tags).map(([key, value]) => `${key}: ${value}`).join('<br>') :
+                        '-';
+
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                <td><div class="status-circle ${server.status}"></div></td>
-                <td>${server.category}</td>
-                <td>${server.model}</td>
-                <td>${server.machineSerial}</td>
-                <td>${server.os || '-'}</td>
-                <td>${server.device_ip || '-'}</td>
-                <td>${server.management_ip || '-'}</td>
-                <td>
-                    <button onclick="openEditModal('${server.os}', '${server.machineSerial}', '${server.device_ip}', '${server.management_ip}', '${server.model}')">驗證</button>
-                    <button onclick="openManageModal('${server.machineSerial}')">事件</button>
-                </td>
-            `;
+            <td><div class="status-circle ${server.status}"></div></td>
+            <td>${server.category}</td>
+            <td>${server.model}</td>
+            <td>${server.machineSerial}</td>
+            <td>${server.os || '-'}</td>
+            <td>${server.device_ip || '-'}</td>
+            <td>${server.management_ip || '-'}</td>
+            <td class="tag-column">${tags}</td>
+            <td>
+                <button onclick="openEditModal('${server.os}', '${server.machineSerial}', '${server.device_ip}', '${server.management_ip}', '${server.model}')">驗證</button>
+                <button onclick="openTagModal('${server.machineSerial}')">標籤</button>
+                <button onclick="openManageModal('${server.machineSerial}')">事件</button>
+            </td>
+        `;
                     table.appendChild(row);
                 });
 
+
         }
+
+        // 標籤
+        function openTagModal(machineSerial) {
+            document.getElementById('tagSerial').value = machineSerial;
+            document.getElementById('tagKey').value = '';
+            document.getElementById('tagValue').value = '';
+            document.getElementById('tagModal').style.display = 'block';
+
+            const existingTagsDiv = document.getElementById('existingTags');
+            existingTagsDiv.innerHTML = ''; // 清空之前的標籤
+
+            // 獲取當前設備的標籤
+            const server = servers.find(server => server.machineSerial === machineSerial);
+            if (server && server.tags) {
+                Object.keys(server.tags).forEach(key => {
+                    const tagDiv = document.createElement('div');
+                    tagDiv.innerHTML = `
+                        <div>
+                            <strong>${key}:</strong> ${server.tags[key]}
+                            <button onclick="editTag('${key}', '${server.tags[key]}')">修改</button>
+                            <button onclick="removeTag('${machineSerial}', '${key}')">刪除</button>
+                        </div>
+                    `;
+                    existingTagsDiv.appendChild(tagDiv);
+                });
+            }
+        }
+
+        function editTag(key, value) {
+            // 將選中的標籤內容填充到輸入框中
+            document.getElementById('tagKey').value = key;
+            document.getElementById('tagValue').value = value;
+        }
+
+        function saveTag() {
+            const serial = document.getElementById('tagSerial').value;
+            const key = document.getElementById('tagKey').value;
+            const value = document.getElementById('tagValue').value;
+
+            if (!key || !value) {
+                alert('請輸入完整的 key 和 value');
+                return;
+            }
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '', true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.status === 'success') {
+                        alert('標籤保存成功');
+                        closeTagModal();
+                        reloadServersData(); // 重新載入設備數據
+                    } else {
+                        alert('標籤保存失敗');
+                    }
+                }
+            };
+            const data = `action=saveTag&serial=${encodeURIComponent(serial)}&key=${encodeURIComponent(key)}&value=${encodeURIComponent(value)}`;
+            xhr.send(data);
+        }
+
+        function removeTag(serial, key) {
+            if (!confirm('確定要刪除此標籤嗎？')) {
+                return;
+            }
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '', true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.status === 'success') {
+                        alert('標籤已刪除');
+                        closeTagModal();
+                        reloadServersData(); // 重新載入設備數據
+                    } else {
+                        alert('標籤刪除失敗');
+                    }
+                }
+            };
+
+            const data = `action=removeTag&serial=${encodeURIComponent(serial)}&key=${encodeURIComponent(key)}`;
+            xhr.send(data);
+        }
+
+        // 全域搜尋和篩選功能
+        function globalFilterTags() {
+            const searchValue = document.getElementById('globalSearch').value.toLowerCase(); // 取得搜尋框的值
+            const rows = document.querySelectorAll('#userTable tr'); // 取得設備表格的所有行
+
+            rows.forEach((row, index) => {
+                if (index === 0) return; // 跳過表頭
+
+                const cells = row.querySelectorAll('td');
+                let rowText = '';
+
+                cells.forEach(cell => {
+                    rowText += cell.textContent.toLowerCase(); // 將該行所有欄位的文字加到一起進行檢查
+                });
+
+                if (rowText.includes(searchValue)) {
+                    row.style.display = ''; // 如果符合搜尋條件，顯示該行
+                } else {
+                    row.style.display = 'none'; // 不符合搜尋條件，隱藏該行
+                }
+            });
+        }
+
 
         function openEditModal(os, machineSerial, deviceIp, managementIp, model) {
             document.getElementById('editOS').value = os;
@@ -680,8 +993,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             const esxi_ip = document.getElementById('editDeviceIp').value;
             const esxi_password = document.getElementById('editPassword').value;
             const machineSerial = document.getElementById('editSerial').value;
+            const os = document.getElementById('editOS').value;
 
-            if (!user || !esxi_ip || !esxi_password) {
+            if (!user || !esxi_ip || !esxi_password || !os) {
                 alert('請輸入設備IP、帳號和驗證密碼');
                 return;
             }
@@ -712,7 +1026,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
             };
-            const data = `user=${encodeURIComponent(user)}&esxi_ip=${encodeURIComponent(esxi_ip)}&esxi_password=${encodeURIComponent(esxi_password)}&device_serial=${encodeURIComponent(machineSerial)}`;
+            const data = `user=${encodeURIComponent(user)}&esxi_ip=${encodeURIComponent(esxi_ip)}&esxi_password=${encodeURIComponent(esxi_password)}&device_serial=${encodeURIComponent(machineSerial)}&os=${encodeURIComponent(os)}`;
             xhr.send(data);
         }
 
@@ -742,22 +1056,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 `<a href="${item.event_link}" target="_blank">${item.event_id}</a>` :
                                 item.event_id;
                             content += `<tr>
-                        <td>${item.timestamp}</td>
-                        <td>${item.model}</td>
-                        <td>${item.machineSerial}</td>
-                        <td>${item.device_ip}</td>
-                        <td>${item.management_ip}</td>
-			<td>${eventIdLink}</td>
-			<td><div class="alert-content">${item.alert_text}</div></td>
-                        <td>
-			    <select name="status" onchange="updateStatus('${item.machineSerial}', '${item.event_id}', this.value)">
-			        <option value="未處理" ${item.status === '未處理' ? 'selected' : ''}>未處理</option>
-                                <option value="處理中" ${item.status === '處理中' ? 'selected' : ''}>處理中</option>
-                                <option value="完成" ${item.status === '完成' ? 'selected' : ''}>完成</option>
-                            </select>
-                        </td>
-                        <td>${item.updated_by || 'N/A'}</td>
-                    </tr>`;
+                                <td>${item.timestamp}</td>
+                                <td>${item.model}</td>
+                                <td>${item.machineSerial}</td>
+                                <td>${item.device_ip}</td>
+                                <td>${item.management_ip}</td>
+                                <td>${eventIdLink}</td>
+                                <td><div class="alert-content">${item.alert_text}</div></td>
+                                <td>
+                                    <select name="status" onchange="updateStatus('${item.machineSerial}', '${item.event_id}', this.value)">
+                                        <option value="未處理" ${item.status === '未處理' ? 'selected' : ''}>未處理</option>
+                                        <option value="處理中" ${item.status === '處理中' ? 'selected' : ''}>處理中</option>
+                                        <option value="完成" ${item.status === '完成' ? 'selected' : ''}>完成</option>
+                                    </select>
+                                </td>
+                                <td>${item.updated_by || 'N/A'}</td>
+                            </tr>`;
                         });
                         content += '</table>';
                         manageContent.innerHTML = content;
@@ -771,7 +1085,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             xhr.send();
         }
 
-
         function reloadServersData() {
             const xhr = new XMLHttpRequest();
             xhr.open('GET', 'fetchDeviceInfo.php', true);
@@ -780,10 +1093,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     try {
                         // 直接解析 JSON 格式
                         servers = JSON.parse(xhr.responseText);
-                        //console.log('自動更新的資料:', servers); // 檢查資料更新是否觸發
-                        console.log('自動更新的資料:', JSON.stringify(servers, null, 2)); // 格式化輸出物件資料
+                        //console.log('自動更新的資料:', JSON.stringify(servers, null, 2)); // 格式化輸出物件資料
                         // 更新頁面顯示
-                        filterByType('Server');
+                        filterByType(currentCategory);
                     } catch (e) {
                         console.error('解析 JSON 資料時發生錯誤:', e);
                     }
@@ -791,6 +1103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             };
             xhr.send();
         }
+
         setInterval(reloadServersData, 10000);
 
         function updateStatus(machineSerial, eventId, newStatus) {
@@ -836,14 +1149,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4 && xhr.status === 200) {
-                    // 確認 MaintainInfo 內是否還有未完成的狀態
-                    const hasIncomplete = maintainInfo
-                        .filter(item => item.machineSerial === machineSerial)
-                        .some(item => item.status !== '完成');
+                    // 確認 MaintainInfo 內是否還有該設備的維護記錄
+                    const maintenanceRecords = maintainInfo.filter(item => item.machineSerial === machineSerial);
+                    const hasIncomplete = maintenanceRecords.some(item => item.status !== '完成');
 
-                    // 若所有事件皆完成，設為綠燈；否則保持黃燈
-                    const finalStatus = hasIncomplete ? 'hardware-error' : 'normal';
+                    // 若存在維護記錄且有未完成的事件，設為黃燈，否則為綠燈
+                    const finalStatus = maintenanceRecords.length > 0 && hasIncomplete ? 'hardware-error' : 'normal';
 
+                    // 更新設備狀態為黃燈或綠燈
                     const updateStatusXhr = new XMLHttpRequest();
                     updateStatusXhr.open('POST', '', true);
                     updateStatusXhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
@@ -864,6 +1177,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         function closeManageModal() {
             document.getElementById('manageModal').style.display = 'none';
+        }
+
+
+        function closeTagModal() {
+            document.getElementById('tagModal').style.display = 'none';
         }
 
         function saveData(user, password) {
