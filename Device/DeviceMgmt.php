@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-// 防止頁面緩存
+// 防止页面被缓存
 header("Cache-Control: no-cache, no-store, must-revalidate"); // HTTP 1.1
 header("Pragma: no-cache"); // HTTP 1.0
 header("Expires: 0"); // Proxies
