@@ -33,7 +33,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <head>
     <meta charset="UTF-8">
-    <title>IWE系統登入</title>
+    <title>系統登入</title>
+    <script>
+    if (window !== window.top) {
+    window.top.location.href = window.location.href;
+    }
+    </script>
     <style>
         body {
             font-family: Arial, sans-serif;
