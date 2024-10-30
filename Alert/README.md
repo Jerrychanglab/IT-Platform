@@ -1,6 +1,8 @@
 # 設備管理系統  
 此告警系統是一個多平台異常檢測工具，整合 NetApp、VMware 和伺服器日誌，即時捕捉關鍵事件，自動推送至 Telegram 並記錄於 Platform 進行保存。集中控管異常，追蹤處理進度，減少人力負擔並提升監控效率。
 
+![image](https://github.com/user-attachments/assets/3e0b8641-f8df-4054-8f33-74f16d7ef6b9)
+
 ## 效益  
 
 ### 💡 自動化的設備管理與監控  
